@@ -41,7 +41,6 @@
                AT END MOVE 'NO' TO MORE-CARDS.
        INITIALIZATION-EXIT.
            EXIT.
-
       *
        READ-AND-PRINT.
            MOVE CARD-RECORD TO PRINT-LINE.
