@@ -1,4 +1,4 @@
-I have compiled the examples and exercises from the COBOL book **Elementary Structured COBOL: A Step-by-Step Approach** here.
+I have compiled the examples and exercises from the COBOL book **Elementary Structured COBOL: A Step-by-Step Approach** here. Work in progress...though
 
 ![enter image description here](./book.jpg)
 
