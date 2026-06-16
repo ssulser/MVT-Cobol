@@ -1,0 +1,249 @@
+//COBOL JOB 1,'COBOL PROGRAM',CLASS=A,MSGCLASS=X
+//COBOL  EXEC PROC=COBUCG
+//COB.SYSIN DD *
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. BIBLIO3.
+      *
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       SOURCE-COMPUTER. IBM-370.
+       OBJECT-COMPUTER. IBM-370.
+      *
+       SPECIAL-NAMES.
+           C01 IS TOP-OF-PAGE.
+      *
+       INPUT-OUTPUT SECTION.
+       FILE-CONTROL.
+           SELECT BIBLIO-CARD-FILE ASSIGN TO UT-S-INPUT.
+           SELECT BIBLIO-LIST-FILE ASSIGN TO UT-S-OUTPUT.
+      *
+       DATA DIVISION.
+      *
+       FILE SECTION.
+       FD  BIBLIO-CARD-FILE
+           LABEL RECORD OMITTED.
+       01  BIBLIO-CARD.
+           03  BOOK-TITLE          PIC X(30).
+           03  BOOK-AUTHOR-NAME    PIC X(24).
+           03  BOOK-PUBLISHER      PIC X(20).
+           03  BOOK-PRICE          PIC 99V99.
+           03  ORDER-QUANTITY      PIC 99.
+      *
+       FD  BIBLIO-LIST-FILE
+           LABEL RECORD OMITTED.
+       01  PRINT-LINE              PIC X(132).
+      *
+       WORKING-STORAGE SECTION.
+      *
+       77  MORE-CARDS              PIC X(03)       VALUE 'YES'.
+       77  LINE-COUNT              PIC 99          VALUE ZERO.
+       77  SUM-PRICES-BY-PUBLISHER PIC 9(4)V99     VALUE ZERO.
+       77  SUM-PRICES-OVER-ALL     PIC 9(4)V99     VALUE ZERO.
+       77  TOTAL-PRICE-PER-LINE    PIC 9(3)V99     VALUE ZERO.
+      *
+       01  REPORT-TITLE.
+           03  FILLER              PIC X(43)       VALUE SPACES.
+           03  FILLER              PIC X(45)       VALUE
+               'B I B L I O G R A P H Y   O R D E R   L I S T'.
+           03  FILLER              PIC X(44)       VALUE SPACES.
+      *
+       01  COLUMN-HEADING.
+           03  FILLER              PIC X(02)       VALUE SPACES.
+           03  FILLER              PIC X(09)       VALUE
+               'PUBLISHER'.
+           03  FILLER              PIC X(13)       VALUE SPACES.
+           03  FILLER              PIC X(06)       VALUE
+               'AUTHOR'.
+           03  FILLER              PIC X(22)       VALUE SPACES.
+           03  FILLER              PIC X(05)       VALUE
+               'TITLE'.
+           03  FILLER              PIC X(30)       VALUE SPACES.
+           03  FILLER              PIC X(05)       VALUE
+               'PRICE'.
+           03  FILLER              PIC X(04)       VALUE SPACES.
+           03  FILLER              PIC X(08)       VALUE
+               'QUANTITY'.
+           03  FILLER              PIC X(06)       VALUE SPACES.
+           03  FILLER              PIC X(05)       VALUE
+               'TOTAL'.
+           03  FILLER              PIC X(02)       VALUE SPACES.
+           03  FILLER              PIC X(05)       VALUE
+               'ERROR'.
+           03  FILLER              PIC X(10)       VALUE SPACES.
+      *
+       01  ORDER-DETAIL-LINE.
+           03  FILLER              PIC X(24)       VALUE SPACES.
+           03  BOOK-AUTHOR-NAME    PIC X(24).
+           03  FILLER              PIC X(04)       VALUE SPACES.
+           03  BOOK-TITLE          PIC X(30).
+           03  FILLER              PIC X(04)       VALUE SPACES.
+           03  BOOK-PRICE          PIC $$9.99.
+           03  FILLER              PIC X(07)       VALUE SPACES.
+           03  ORDER-QUANTITY      PIC Z9.
+           03  FILLER              PIC X(07)       VALUE SPACES.
+           03  TOTAL-AMOUNT        PIC $$$9.99.
+           03  FILLER              PIC X(02)       VALUE SPACES.
+           03  ERROR-MESSAGE       PIC X(15).
+      *
+       01  PUBLISHER-NAME-LINE.
+           03  FILLER              PIC X(02)       VALUE SPACES.
+           03  PUBLISHER-NAME      PIC X(20).
+           03  FILLER              PIC X(110)      VALUE SPACES.
+      *
+       01  ORDER-TOTAL-LINE.
+           03  FILLER              PIC X(81)       VALUE SPACES.
+           03  OUTPUT-TOTAL-NAME   PIC X(20).
+           03  FILLER              PIC X(04)       VALUE SPACES.
+           03  ORDER-TOTAL         PIC $$$,$$9.99.
+           03  FILLER              PIC X(17)       VALUE SPACES.
+      *
+       PROCEDURE DIVISION.
+       MAIN-PARA.
+           PERFORM INITIALIZATION THRU INITIALIZATION-EXIT.
+           PERFORM PROCESS-AND-READ THRU PROCESS-AND-READ-EXIT
+               UNTIL MORE-CARDS = 'NO'.
+           PERFORM PRINT-TOTALS-AND-CLOSE.
+           STOP RUN.
+      *
+       INITIALIZATION.
+           OPEN INPUT BIBLIO-CARD-FILE.
+           OPEN OUTPUT BIBLIO-LIST-FILE.
+           READ BIBLIO-CARD-FILE
+               AT END MOVE 'NO' TO MORE-CARDS.
+           IF MORE-CARDS EQUAL 'YES' THEN
+               MOVE BOOK-PUBLISHER TO PUBLISHER-NAME
+               PERFORM NEW-PAGE-ROUTINE THRU NEW-PAGE-ROUTINE-EXIT.
+       INITIALIZATION-EXIT.
+           EXIT.
+      *
+       PROCESS-AND-READ.
+           PERFORM INPUT-VALIDATION-ROUTINE THRU
+                       INPUT-VALIDATION-ROUTINE-EXIT.
+           IF BOOK-PUBLISHER NOT = PUBLISHER-NAME THEN
+               PERFORM NEW-PUBLISHER-ROUTINE THRU
+                           NEW-PUBLISHER-ROUTINE-EXIT.
+           IF LINE-COUNT > 50 THEN
+               PERFORM NEW-PAGE-ROUTINE THRU NEW-PAGE-ROUTINE-EXIT.
+           MOVE CORRESPONDING BIBLIO-CARD TO ORDER-DETAIL-LINE.
+           IF ERROR-MESSAGE = SPACES THEN
+               COMPUTE TOTAL-PRICE-PER-LINE = BOOK-PRICE
+                   IN BIBLIO-CARD * ORDER-QUANTITY IN BIBLIO-CARD
+               ADD TOTAL-PRICE-PER-LINE TO SUM-PRICES-BY-PUBLISHER,
+                                           SUM-PRICES-OVER-ALL
+      *         MOVE TOTAL-PRICE-PER-LINE TO TOTAL-AMOUNT
+           ELSE
+               MOVE ZERO TO TOTAL-PRICE-PER-LINE.
+      *
+           MOVE TOTAL-PRICE-PER-LINE TO TOTAL-AMOUNT.
+           WRITE PRINT-LINE FROM ORDER-DETAIL-LINE AFTER 1 LINES.
+           ADD 1 TO LINE-COUNT.
+           READ BIBLIO-CARD-FILE
+               AT END MOVE 'NO' TO MORE-CARDS.
+       PROCESS-AND-READ-EXIT.
+           EXIT.
+      *
+       INPUT-VALIDATION-ROUTINE.
+           IF BOOK-PUBLISHER IN BIBLIO-CARD = SPACES THEN
+               MOVE 'NO PUBLISHER' TO ERROR-MESSAGE
+           ELSE
+               IF BOOK-TITLE IN BIBLIO-CARD = SPACES THEN
+                   MOVE 'NO TITLE' TO ERROR-MESSAGE
+               ELSE
+                   IF BOOK-AUTHOR-NAME IN BIBLIO-CARD = SPACES THEN
+                       MOVE 'NO AUTHOR' TO ERROR-MESSAGE
+                   ELSE
+                       IF BOOK-PRICE IN BIBLIO-CARD NOT NUMERIC THEN
+                           MOVE ZERO TO BOOK-PRICE IN BIBLIO-CARD
+                           MOVE 'INVALID PRICE' TO ERROR-MESSAGE
+                       ELSE
+                           IF BOOK-PRICE IN BIBLIO-CARD = 0 THEN
+                               MOVE 'INVALID PRICE' TO ERROR-MESSAGE
+                           ELSE
+                               IF ORDER-QUANTITY IN BIBLIO-CARD
+                                       NOT NUMERIC THEN
+                                   MOVE ZERO TO ORDER-QUANTITY IN
+                                       BIBLIO-CARD
+                                   MOVE 'INVALID QTY' TO ERROR-MESSAGE
+                               ELSE
+                                   IF ORDER-QUANTITY IN BIBLIO-CARD = 0
+                                       MOVE 'INVALID QTY' TO 
+                                           ERROR-MESSAGE
+                                   ELSE
+                                       MOVE SPACES TO ERROR-MESSAGE.
+       INPUT-VALIDATION-ROUTINE-EXIT.
+           EXIT.
+      *
+       NEW-PUBLISHER-ROUTINE.
+           MOVE ' PUBLISHER SUBTOTAL:' TO OUTPUT-TOTAL-NAME.
+           MOVE SUM-PRICES-BY-PUBLISHER TO ORDER-TOTAL.
+           WRITE PRINT-LINE FROM ORDER-TOTAL-LINE AFTER 2 LINES.
+           MOVE BOOK-PUBLISHER IN BIBLIO-CARD TO PUBLISHER-NAME.
+           ADD 2 TO LINE-COUNT.
+           MOVE ZERO TO SUM-PRICES-BY-PUBLISHER.
+           IF LINE-COUNT > 50 THEN
+               PERFORM NEW-PAGE-ROUTINE THRU NEW-PAGE-ROUTINE-EXIT
+           ELSE
+               WRITE PRINT-LINE FROM PUBLISHER-NAME-LINE AFTER 2 LINES
+               ADD 2 TO LINE-COUNT.
+       NEW-PUBLISHER-ROUTINE-EXIT.
+           EXIT.
+      *
+       NEW-PAGE-ROUTINE.
+           WRITE PRINT-LINE FROM REPORT-TITLE AFTER TOP-OF-PAGE.
+           WRITE PRINT-LINE FROM COLUMN-HEADING AFTER 2 LINES.
+           WRITE PRINT-LINE FROM PUBLISHER-NAME-LINE AFTER 2 LINES.
+           MOVE 5 TO LINE-COUNT.
+       NEW-PAGE-ROUTINE-EXIT.
+           EXIT.
+      *
+       PRINT-TOTALS-AND-CLOSE.
+           MOVE ' PUBLISHER SUBTOTAL:' TO OUTPUT-TOTAL-NAME.
+           MOVE SUM-PRICES-BY-PUBLISHER TO ORDER-TOTAL.
+           WRITE PRINT-LINE FROM ORDER-TOTAL-LINE AFTER 2 LINES.
+           MOVE 'OVERALL ORDER TOTAL:' TO OUTPUT-TOTAL-NAME.
+           MOVE SUM-PRICES-OVER-ALL TO ORDER-TOTAL.
+           WRITE PRINT-LINE FROM ORDER-TOTAL-LINE AFTER 2 LINES.
+           CLOSE BIBLIO-CARD-FILE, BIBLIO-LIST-FILE.
+/*
+//GO.INPUT DD *
+ADVANCED COBOL TECHNIQUES     JAMES RICHARDSON         ACME PUBLISHING    359912
+BUSINESS REPORT DESIGN        SARAH MITCHELL           ACME PUBLISHING    289918
+MASTERING JCL                 THOMAS WILSON            ACME PUBLISHING    429905
+MVS SYSTEM UTILITIES          ROBERT DAVIS             ACME PUBLISHING    389908
+DATABASE DESIGN BASICS        MICHAEL TURNER           BLUE SKY BOOKS     249925
+INTRODUCTION TO SQL           EMILY PARKER             BLUE SKY BOOKS     199940
+DATA MODELING ESSENTIALS      KEVIN HUGHES             BLUE SKY BOOKS     319915
+ADVANCED QUERY METHODS        LINDA FOSTER             BLUE SKY BOOKS     369910
+PASCAL FOR PROFESSIONALS      MARTIN SCHMIDT           CODE HOUSE         279920
+OBJECT ORIENTED PASCAL        JULIA WEBER              CODE HOUSE         329914
+FREEPASCAL COOKBOOK           DANIEL FISCHER           CODE HOUSE         389908
+MODERN COMPILER DESIGN        PETER KELLER             CODE HOUSE         459906
+SOFTWARE ARCHITECTURE         OLIVER BAUER             CODE HOUSE         499904
+EMERGENCY MEDICINE TODAY      LAURA ANDERSON           HEALTH PRESS       549906
+ANESTHESIA HANDBOOK           DAVID MILLER             HEALTH PRESS       629904
+POINT OF CARE ULTRASOUND      HANNAH JONES             HEALTH PRESS       479911
+CRITICAL CARE ESSENTIALS      BENJAMIN TAYLOR          HEALTH PRESS       689903
+COBOL FOR BANKING             STEPHEN WALKER           LEGACY MEDIA       349916
+VSAM IN PRACTICE              CHRISTOPHER HALL         LEGACY MEDIA       379912
+CICS APPLICATION DESIGN       ANDREW SCOTT             LEGACY MEDIA       449908
+MAINFRAME PERFORMANCE         BRIAN MORRIS             LEGACY MEDIA       529905
+ASSEMBLER PROGRAMMING         MATTHEW CLARK            LEGACY MEDIA       489907
+NETWORK FUNDAMENTALS          JOHN EVANS               NORTHERN BOOKWORKS 229930
+TCPIP EXPLAINED               ERIC ROBERTS             NORTHERN BOOKWORKS 289922
+SECURE SYSTEM DESIGN          FRANK HARRIS             NORTHERN BOOKWORKS 419910
+THE ART OF DEBUGGING          ALAN COOPER              TECHNICAL LIBRARY  269924
+OPERATING SYSTEMS             GEORGE THOMPSON          TECHNICAL LIBRARY  399914
+FILE ORGANIZATION METHODS     NANCY ADAMS              TECHNICAL LIBRARY  319918
+SORT MERGE APPLICATIONS       MARK LEWIS               TECHNICAL LIBRARY  359912
+BATCH PROCESSING SYSTEMS      VICTOR YOUNG             TECHNICAL LIBRARY  449906
+INTRODUCTION TO REXX          SIMON CARTER             VINTAGE COMPUTING  249928
+TSO FOR BEGINNERS             PATRICK REED             VINTAGE COMPUTING  219935
+HERCULES MAINFRAME GUIDE      RICHARD COLE             VINTAGE COMPUTING  389909
+MVS 38J IN DEPTH              KEITH HOWARD             VINTAGE COMPUTING  559904
+BOOKS OF ERRORS ED. I         SIMON SULSER             MY OWN BOOKS CO.   000043
+BOOKS OF ERRORS ED. II        SIMON SULSER                                559904
+                              SIMON SULSER             MY OWN BOOKS CO.   435010
+BOOKS OF ERRORS ED. IV        SIMON SULSER             MY OWN BOOKS CO.   377500
+/*
+//GO.OUTPUT DD SYSOUT=*,DCB=(RECFM=FBA,LRECL=133,BLKSIZE=13300)
+//
